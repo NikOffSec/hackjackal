@@ -4,6 +4,7 @@ project(hackjackal VERSION 0.1 DESCRIPTION "Project 2 for COP3530" LANGUAGES CXX
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 FetchContent_Declare(imgui
@@ -28,11 +29,13 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
-add_library(core util.cpp parser.cpp)
-target_include_directories(core PUBLIC include)
+add_library(core src/parser.cpp
+                 src/redblack.cpp
+                 src/parser.cpp)
+target_include_directories(core PUBLIC inc)
 
+add_executable(app src/main.cpp)
 set_target_properties(app PROPERTIES OUTPUT_NAME hackjackal)
-add_executable(app main.cpp)
 target_link_libraries(app PRIVATE core imgui)
 
 enable_testing()
