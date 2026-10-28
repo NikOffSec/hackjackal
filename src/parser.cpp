@@ -1,6 +1,6 @@
 #include <parser.h>
 
-std::string read_file(filepath) {
+std::string read_file(std::string filepath) {
   std::ifstream file(filepath);
   if (!file)
     throw std::runtime_error("can't open the file" + filepath);
