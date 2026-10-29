@@ -1,8 +1,10 @@
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 
 std::string read_file(std::string filepath);
+std::string parseString();
 
 Value parseValue() {
   skipWhitespace();
