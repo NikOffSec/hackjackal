@@ -10,12 +10,12 @@ std::string read_file(std::string filepath) {
   return data;
 }
 
-// the whole file once it's read in, pos is where we're at in it
+// whole file goes here, pos is where we're at
 std::string json;
 size_t pos = 0;
 
 std::string parseString() {
-  pos++; // skip the opening quote
+  pos++;
   std::string str;
 
   while (pos < json.size() && json[pos] != '"') {
@@ -25,7 +25,6 @@ std::string parseString() {
       continue;
     }
 
-    // backslash at the very end, let the check below catch it
     if (pos >= json.size())
       break;
 
@@ -46,11 +45,11 @@ std::string parseString() {
       str += '\f';
       break;
     case 'u':
-      // keep unicode as is for now, the 4 hex digits get copied next loop
+      // TODO: actually decode unicode
       str += "\\u";
       break;
     default:
-      // covers \" \\ and \/
+      // \" \\ and \/
       str += esc;
     }
   }
@@ -58,6 +57,6 @@ std::string parseString() {
   if (pos >= json.size())
     throw std::runtime_error("string never got closed");
 
-  pos++; // skip the closing quote
+  pos++;
   return str;
 }
