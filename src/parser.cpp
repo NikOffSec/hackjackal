@@ -1,4 +1,27 @@
 #include <parser.h>
+#include <stdexcept>
+
+std::string json; // full file string
+size_t pos = 0;   // index into string
+
+Value parseValue() {
+  skipWhitespace();
+  switch (peek()) {
+  case '{':
+    return parseObject();
+  case '[':
+    return parseArray();
+  case '"':
+    return parseString();
+  case 't':
+  case 'f':
+    return parseBool();
+  case 'n':
+    return parseNull();
+  default:
+    return parseNumber();
+  }
+}
 
 std::string read_file(std::string filepath) {
   std::ifstream file(filepath);
@@ -9,10 +32,6 @@ std::string read_file(std::string filepath) {
   file.read(data.data(), data.size());
   return data;
 }
-
-// whole file goes here, pos is where we're at
-std::string json;
-size_t pos = 0;
 
 std::string parseString() {
   pos++;
@@ -59,4 +78,77 @@ std::string parseString() {
 
   pos++;
   return str;
+}
+
+void skipWhitespace() {
+  while (pos < json.size()) {
+    char c = json[pos];
+    if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
+      break;
+    pos++;
+  }
+}
+
+char peek() { return json[pos]; }
+
+Object parseObject() {
+  Object obj;
+  pos++;
+  skipWhitespace();
+
+  if (pos < json.size() && json[pos] == '}') {
+    pos++;
+    return obj;
+  }
+
+  while (true) {
+    skipWhitespace();
+    if (pos >= json.size() || json[pos] != '"')
+      throw std::runtime_error("expected key string");
+    std::string key = parseString();
+
+    skipWhitespace();
+    if (pos >= json.size() || json[pos] != ':')
+      throw std::runtime_error("expected ':'");
+    pos++;
+
+    obj[key] = parseValue();
+
+    skipWhitespace();
+    if (pos >= json.size())
+      throw std::runtime_error("object never got closed");
+    if (json[pos] == '}') {
+      pos++;
+      return obj;
+    }
+    if (json[pos] != ',')
+      throw std::runtime_error("expected ',' or '}' but got neither");
+    pos++;
+  }
+}
+
+Array parseArray() {
+  Array arr;
+  pos++;
+  skipWhitespace();
+
+  if (pos < json.size() && json[pos] == ']') {
+    pos++;
+    return arr;
+  }
+
+  while (true) {
+    arr.push_back(parseValue());
+
+    skipWhitespace();
+    if (pos >= json.size())
+      throw std::runtime_error("array never got closed");
+    if (json[pos] == ']') {
+      pos++;
+      return arr;
+    }
+    if (json[pos] != ',')
+      throw std::runtime_error("expected ',' or ']'");
+    pos++;
+  }
 }
