@@ -24,3 +24,7 @@ char peek();
 
 Object parseObject();
 Array parseArray();
+
+bool parseBool();
+std::nullptr_t parseNull();
+double parseNumber();

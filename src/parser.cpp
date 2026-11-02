@@ -1,3 +1,4 @@
+#include <cctype>
 #include <parser.h>
 #include <stdexcept>
 
@@ -8,18 +9,18 @@ Value parseValue() {
   skipWhitespace();
   switch (peek()) {
   case '{':
-    return parseObject();
+    return Value{parseObject()};
   case '[':
-    return parseArray();
+    return Value{parseArray()};
   case '"':
-    return parseString();
+    return Value{parseString()};
   case 't':
   case 'f':
-    return parseBool();
+    return Value{parseBool()};
   case 'n':
-    return parseNull();
+    return Value{parseNull()};
   default:
-    return parseNumber();
+    return Value{parseNumber()};
   }
 }
 
@@ -151,4 +152,36 @@ Array parseArray() {
       throw std::runtime_error("expected ',' or ']'");
     pos++;
   }
+}
+
+bool parseBool() {
+  if (json.compare(pos, 4, "true") == 0) {
+    pos += 4;
+    return true;
+  }
+  if (json.compare(pos, 5, "false") == 0) {
+    pos += 5;
+    return false;
+  }
+  throw std::runtime_error("expected true or false");
+}
+
+std::nullptr_t parseNull() {
+  if (json.compare(pos, 4, "null") != 0)
+    throw std::runtime_error("expected null");
+  pos += 4;
+  return nullptr;
+}
+
+double parseNumber() {
+  size_t start = pos;
+  // grab anything that can show up in a number like -12.5e+3
+  while (pos < json.size() &&
+         (isdigit(json[pos]) || json[pos] == '-' || json[pos] == '+' ||
+          json[pos] == '.' || json[pos] == 'e' || json[pos] == 'E'))
+    pos++;
+
+  if (pos == start)
+    throw std::runtime_error("unexpected character in json");
+  return std::stod(json.substr(start, pos - start));
 }
