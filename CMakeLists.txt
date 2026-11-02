@@ -31,7 +31,8 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 add_library(core src/parser.cpp
                  src/redblack.cpp
-                 src/parser.cpp)
+                 src/splay.cpp
+                 src/cve.cpp)
 target_include_directories(core PUBLIC inc)
 
 add_executable(app src/main.cpp)
