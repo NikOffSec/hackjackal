@@ -19,16 +19,14 @@ extern std::string json;
 extern size_t pos;
 
 Value parseValue();
-
-std::string read_file(std::string filepath);
-std::string parseString();
-
-void skipWhitespace();
-char peek();
-
 Object parseObject();
 Array parseArray();
-
+std::string parseString();
 bool parseBool();
 std::nullptr_t parseNull();
 double parseNumber();
+
+std::string read_file(std::string filepath);
+
+void skipWhitespace();
+char peek();
