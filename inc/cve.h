@@ -1,5 +1,7 @@
+#pragma once
 #include <cstdint>
 #include <optional>
+#include <parser.h>
 #include <string>
 #include <vector>
 
@@ -54,3 +56,11 @@ struct CveRecord {
   std::vector<Cpe> cpes;
   std::optional<CvssV4> cvss;
 };
+
+// reads the json file and turns every entry in "vulnerabilities" into a record
+std::vector<CveRecord> loadRecords(std::string filepath);
+std::vector<CveRecord> buildRecords(const Value &root);
+CveRecord toRecord(const Object &cve);
+
+int64_t parseDate(const std::string &date); // seconds since 1970
+Cpe parseCpe(const std::string &criteria, bool vulnerable);
