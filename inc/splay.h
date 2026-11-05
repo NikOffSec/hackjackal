@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include <cve.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,7 +33,9 @@ public:
 
     root = splay(root, key);
     if (!(key < root->key) && !(root->key < key)) {
-      root->records.push_back(record);
+      // same deal as the red black one, a cve can list a cpe more than once
+      if (root->records.back() != record)
+        root->records.push_back(record);
       return;
     }
 
@@ -211,3 +214,14 @@ private:
     root = nullptr;
   }
 };
+
+// splay version of buildRedBlackTrees, same keys so the results line up
+inline void buildSplayTrees(const std::vector<CveRecord> &records,
+                            SplayTree<std::string> &byCpe,
+                            SplayTree<int64_t> &byDate) {
+  for (uint32_t i = 0; i < records.size(); i++) {
+    byDate.insert(records[i].published, i);
+    for (const Cpe &cpe : records[i].cpes)
+      byCpe.insert(cpeKey(cpe), i);
+  }
+}
