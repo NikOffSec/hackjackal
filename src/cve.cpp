@@ -207,3 +207,5 @@ std::vector<CveRecord> loadRecords(std::string filepath) {
   json.shrink_to_fit();
   return buildRecords(root);
 }
+
+std::string cpeKey(const Cpe &cpe) { return cpe.vendor + ":" + cpe.product; }

@@ -64,3 +64,6 @@ CveRecord toRecord(const Object &cve);
 
 int64_t parseDate(const std::string &date); // seconds since 1970
 Cpe parseCpe(const std::string &criteria, bool vulnerable);
+
+// what the cpe trees sort by, change this if we want the version in there too
+std::string cpeKey(const Cpe &cpe);

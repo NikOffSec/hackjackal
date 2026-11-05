@@ -192,6 +192,53 @@ TEST_CASE("loadRecords reads the real NVD file") {
           "DNS cache poisoning via BIND, by predictable query IDs.");
 }
 
+TEST_CASE("buildRedBlackTrees sorts records by cpe and date") {
+  std::vector<CveRecord> records(3);
+  records[0].published = 300;
+  records[0].cpes = {{"openssl", "openssl", "1.0", true},
+                     {"openssl", "openssl", "1.1", true}};
+  records[1].published = 100;
+  records[1].cpes = {{"linux", "linux_kernel", "-", false}};
+  records[2].published = 300;
+  records[2].cpes = {{"openssl", "openssl", "*", true}};
+
+  RedBlackTree<std::string> byCpe;
+  RedBlackTree<int64_t> byDate;
+  buildRedBlackTrees(records, byCpe, byDate);
+
+  // record 0 lists openssl twice but should only show up once
+  REQUIRE(*byCpe.find("openssl:openssl") == std::vector<uint32_t>{0, 2});
+  REQUIRE(*byCpe.find("linux:linux_kernel") == std::vector<uint32_t>{1});
+  REQUIRE(*byDate.find(300) == std::vector<uint32_t>{0, 2});
+  REQUIRE(*byDate.find(100) == std::vector<uint32_t>{1});
+  REQUIRE(byCpe.size() == 2);
+  REQUIRE(byDate.size() == 2);
+}
+
+TEST_CASE("buildRedBlackTrees works on the real NVD file") {
+  std::string path = std::string(DATA_DIR) + "/nvdcve-2.0-modified.json";
+  if (!std::filesystem::exists(path))
+    SKIP("no data file in data/");
+
+  std::vector<CveRecord> records = loadRecords(path);
+  RedBlackTree<std::string> byCpe;
+  RedBlackTree<int64_t> byDate;
+  buildRedBlackTrees(records, byCpe, byDate);
+
+  REQUIRE(byCpe.valid());
+  REQUIRE(byDate.valid());
+
+  // every cve in the openssl list should actually have an openssl cpe
+  const std::vector<uint32_t> *hits = byCpe.find("openssl:openssl");
+  REQUIRE(hits != nullptr);
+  for (uint32_t i : *hits) {
+    bool found = false;
+    for (const Cpe &cpe : records[i].cpes)
+      found = found || cpeKey(cpe) == "openssl:openssl";
+    REQUIRE(found);
+  }
+}
+
 TEST_CASE("red black tree insert and find") {
   RedBlackTree<std::string> tree;
   tree.insert("cpe:b", 0);

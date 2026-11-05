@@ -1,6 +1,8 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include <cve.h>
+#include <string>
 #include <vector>
 
 enum class Color : uint8_t { Black, Red };
@@ -104,7 +106,8 @@ private:
       h->left = insert(h->left, key, record);
     else if (h->key < key)
       h->right = insert(h->right, key, record);
-    else
+    // a cve can list the same cpe a bunch of times, only keep it once
+    else if (h->records.back() != record)
       h->records.push_back(record);
 
     // fix things on the way back up
@@ -163,3 +166,15 @@ private:
     delete n;
   }
 };
+
+// one tree keyed by cpe (vendor:product) and one keyed by published date,
+// both point back into records by index
+inline void buildRedBlackTrees(const std::vector<CveRecord> &records,
+                               RedBlackTree<std::string> &byCpe,
+                               RedBlackTree<int64_t> &byDate) {
+  for (uint32_t i = 0; i < records.size(); i++) {
+    byDate.insert(records[i].published, i);
+    for (const Cpe &cpe : records[i].cpes)
+      byCpe.insert(cpeKey(cpe), i);
+  }
+}
