@@ -63,6 +63,21 @@ public:
     return &root->records;
   }
 
+  // adds every node a find for key walks through, for the visualizer. this
+  // one doesn't splay, so call it before find or the path will be gone
+  void tracePath(const Key &key, std::vector<const Node *> &path) const {
+    const Node *cur = root;
+    while (cur) {
+      path.push_back(cur);
+      if (key < cur->key)
+        cur = cur->left;
+      else if (cur->key < key)
+        cur = cur->right;
+      else
+        return;
+    }
+  }
+
   // the traversals use a stack instead of recursion because sorted inserts
   // turn the tree into one long line and that'd blow the call stack
 

@@ -1,5 +1,8 @@
+#include <algorithm>
 #include <chrono>
 #include <cve.h>
+#include <iterator>
+#include <string_view>
 
 // grabs obj[key] if it's there and the right type, otherwise hands back an
 // empty one so a weird record doesn't crash everything
@@ -183,29 +186,95 @@ CveRecord toRecord(const Object &cve) {
   return rec;
 }
 
-std::vector<CveRecord> buildRecords(const Value &root) {
-  std::vector<CveRecord> records;
-  const Object *obj = asObject(root);
-  if (!obj)
-    throw std::runtime_error("expected the json to start with an object");
+// big fields in the feeds that toRecord never reads, about half of each entry.
+// if toRecord starts using one of these it has to come off this list or it'll
+// just show up empty
+static bool isUnusedField(const std::string &key) {
+  static constexpr std::string_view unused[] = {
+      "affected",        "references",       "weaknesses",
+      "cvssMetricV2",    "cvssMetricV30",    "cvssMetricV31",
+      "ssvcV203",        "matchCriteriaId",  "sourceIdentifier"};
+  return std::find(std::begin(unused), std::end(unused), key) !=
+         std::end(unused);
+}
 
-  for (const Value &v : field<Array>(*obj, "vulnerabilities")) {
-    const Object *entry = asObject(v);
-    if (entry)
-      records.push_back(toRecord(field<Object>(*entry, "cve")));
+// keeps skipField from staying on for whoever parses next if loading throws
+struct SkipUnusedFields {
+  SkipUnusedFields() { skipField = isUnusedField; }
+  ~SkipUnusedFields() { skipField = nullptr; }
+};
+
+// turns each entry into a record as soon as it's parsed, holding the whole feed
+// as Values takes about 4x its size in memory
+static void parseVulnerabilities(std::vector<CveRecord> &records) {
+  pos++;
+  skipWhitespace();
+  if (pos < json.size() && json[pos] == ']') {
+    pos++;
+    return;
   }
-  return records;
+
+  while (true) {
+    Value v = parseValue();
+    if (const Object *entry = asObject(v))
+      records.push_back(toRecord(field<Object>(*entry, "cve")));
+
+    skipWhitespace();
+    if (pos >= json.size())
+      throw std::runtime_error("array never got closed");
+    if (json[pos] == ']') {
+      pos++;
+      return;
+    }
+    if (json[pos] != ',')
+      throw std::runtime_error("expected ',' or ']'");
+    pos++;
+  }
 }
 
 std::vector<CveRecord> loadRecords(std::string filepath) {
   json = read_file(filepath);
   pos = 0;
-  Value root = parseValue();
+  SkipUnusedFields skipping;
+  std::vector<CveRecord> records;
+
+  skipWhitespace();
+  if (pos >= json.size() || json[pos] != '{')
+    throw std::runtime_error("expected the json to start with an object");
+  pos++;
+  skipWhitespace();
+
+  bool closed = pos < json.size() && json[pos] == '}';
+  while (!closed) {
+    skipWhitespace();
+    if (pos >= json.size() || json[pos] != '"')
+      throw std::runtime_error("expected key string");
+    std::string key = parseString();
+
+    skipWhitespace();
+    if (pos >= json.size() || json[pos] != ':')
+      throw std::runtime_error("expected ':'");
+    pos++;
+
+    skipWhitespace();
+    if (key == "vulnerabilities" && pos < json.size() && json[pos] == '[')
+      parseVulnerabilities(records);
+    else
+      parseValue();
+
+    skipWhitespace();
+    if (pos >= json.size())
+      throw std::runtime_error("object never got closed");
+    closed = json[pos] == '}';
+    if (!closed && json[pos] != ',')
+      throw std::runtime_error("expected ',' or '}' but got neither");
+    pos++;
+  }
 
   // done with the raw text, free it up since the file is big
   json.clear();
   json.shrink_to_fit();
-  return buildRecords(root);
+  return records;
 }
 
-std::string cpeKey(const Cpe &cpe) { return cpe.vendor + ":" + cpe.product; }
+std::string cpeKey(const Cpe &cpe) { return cpe.product + ":" + cpe.version; }

@@ -59,11 +59,10 @@ struct CveRecord {
 
 // reads the json file and turns every entry in "vulnerabilities" into a record
 std::vector<CveRecord> loadRecords(std::string filepath);
-std::vector<CveRecord> buildRecords(const Value &root);
 CveRecord toRecord(const Object &cve);
 
 int64_t parseDate(const std::string &date); // seconds since 1970
 Cpe parseCpe(const std::string &criteria, bool vulnerable);
 
-// what the cpe trees sort by, change this if we want the version in there too
+// what the cpe trees sort by, product:version
 std::string cpeKey(const Cpe &cpe);

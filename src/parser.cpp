@@ -2,8 +2,9 @@
 #include <parser.h>
 #include <stdexcept>
 
-std::string json; // full file string
-size_t pos = 0;   // index into string
+thread_local std::string json; // full file string
+thread_local size_t pos = 0;   // index into string
+thread_local bool (*skipField)(const std::string &key) = nullptr;
 
 Value parseValue() {
   skipWhitespace();
@@ -22,6 +23,47 @@ Value parseValue() {
   default:
     return Value{parseNumber()};
   }
+}
+
+// moves past a value without building it. it only counts brackets, so it
+// notices a value that never ends but not a mismatch like [}
+void skipValue() {
+  skipWhitespace();
+  size_t start = pos;
+  int depth = 0;
+
+  while (pos < json.size()) {
+    char c = json[pos];
+    if (c == '"') {
+      pos++;
+      while (pos < json.size() && json[pos] != '"')
+        pos += json[pos] == '\\' ? 2 : 1;
+      if (pos >= json.size())
+        throw std::runtime_error("string never got closed");
+      pos++;
+      if (depth == 0)
+        return;
+    } else if (c == '{' || c == '[') {
+      depth++;
+      pos++;
+    } else if (c == '}' || c == ']') {
+      if (depth == 0)
+        break;
+      depth--;
+      pos++;
+      if (depth == 0)
+        return;
+    } else if (c == ',' && depth == 0) {
+      break;
+    } else {
+      pos++;
+    }
+  }
+
+  if (depth > 0)
+    throw std::runtime_error("value never got closed");
+  if (pos == start)
+    throw std::runtime_error("expected a value");
 }
 
 std::string read_file(std::string filepath) {
@@ -113,7 +155,10 @@ Object parseObject() {
       throw std::runtime_error("expected ':'");
     pos++;
 
-    obj[key] = parseValue();
+    if (skipField && skipField(key))
+      skipValue();
+    else
+      obj[key] = parseValue();
 
     skipWhitespace();
     if (pos >= json.size())

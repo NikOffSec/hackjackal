@@ -46,6 +46,20 @@ public:
     return nullptr;
   }
 
+  // adds every node a find for key walks through, for the visualizer
+  void tracePath(const Key &key, std::vector<const Node *> &path) const {
+    const Node *cur = root;
+    while (cur) {
+      path.push_back(cur);
+      if (key < cur->key)
+        cur = cur->left;
+      else if (cur->key < key)
+        cur = cur->right;
+      else
+        return;
+    }
+  }
+
   // visit(key, records) for every node in sorted order
   template <typename F> void inorder(F visit) const { inorder(root, visit); }
 
@@ -167,7 +181,7 @@ private:
   }
 };
 
-// one tree keyed by cpe (vendor:product) and one keyed by published date,
+// one tree keyed by cpe (product:version) and one keyed by published date,
 // both point back into records by index
 inline void buildRedBlackTrees(const std::vector<CveRecord> &records,
                                RedBlackTree<std::string> &byCpe,

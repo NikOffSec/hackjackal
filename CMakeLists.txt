@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 4.3)
 
 project(hackjackal VERSION 0.1 DESCRIPTION "Project 2 for COP3530" LANGUAGES CXX)
 
+# the full dataset takes minutes to load without optimizations
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+option(DEBUG_KEYS "F1 and F2 start fake paths on the choose screen" ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -17,6 +24,7 @@ FetchContent_MakeAvailable(imgui Catch2)
 
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(Threads REQUIRED)
 
 add_library(imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -32,12 +40,19 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 add_library(core src/parser.cpp
                  src/redblack.cpp
                  src/splay.cpp
-                 src/cve.cpp)
+                 src/cve.cpp
+                 src/search.cpp)
 target_include_directories(core PUBLIC inc)
+target_link_libraries(core PUBLIC Threads::Threads)
 
-add_executable(app src/main.cpp)
+add_executable(app src/main.cpp src/visualizer.cpp)
 set_target_properties(app PROPERTIES OUTPUT_NAME hackjackal)
 target_link_libraries(app PRIVATE core imgui)
+if(DEBUG_KEYS)
+  target_compile_definitions(app PRIVATE DEBUG_KEYS)
+endif()
+set_source_files_properties(src/visualizer.cpp src/search.cpp PROPERTIES
+                            COMPILE_OPTIONS "-Wall;-Wextra")
 
 enable_testing()
 add_executable(tests tests/tests.cpp)
